@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tebak Nada</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        #waveContainer {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            visibility: hidden; /* Hide wave by default */
+            margin: 20px 0; /* Add margin for top and bottom */
+            height: 60px; /* Set fixed height for wave container */
+        }
+
+        .bar {
+            width: 10px; /* Width of the bars */
+            height: 30px; /* Default height */
+            background-color: #4682b4;
+            margin: 0 2px;
+            animation: wave 1s infinite ease-in-out; /* Animation for wave effect */
+            border-radius: 5px; /* Rounded edges for bars */
+            transition: height 0.1s ease; /* Smooth height transition */
+        }
+
+        /* Create a staggered effect for the bars */
+        .bar:nth-child(1) { animation-delay: 0s; }
+        .bar:nth-child(2) { animation-delay: 0.1s; }
+        .bar:nth-child(3) { animation-delay: 0.2s; }
+        .bar:nth-child(4) { animation-delay: 0.3s; }
+        .bar:nth-child(5) { animation-delay: 0.4s; }
+        .bar:nth-child(6) { animation-delay: 0.5s; }
+        .bar:nth-child(7) { animation-delay: 0.6s; } /* Ensure there are 7 bars */
+
+        @keyframes wave {
+            0%, 100% {
+                transform: scaleY(1); /* Keep it consistent at start and end */
+            }
+            50% {
+                transform: scaleY(1.5); /* Increase height slightly for wave effect */
+            }
+        }
+
+        #chordButtons {
+            display: none;
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .btn {
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.2s; /* Smooth transition */
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: #5a9bd3; /* Change color on hover */
+            transform: scale(1.05); /* Slightly enlarge on hover */
+        }
+
+        .correct {
+            background-color: green !important;
+        }
+
+        .wrong {
+            background-color: red !important;
+        }
+
+        #nextButton {
+            display: none;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.2s; /* Smooth transition */
+        }
+
+        #nextButton:hover {
+            background-color: #5a9bd3; /* Change color on hover */
+            transform: scale(1.05); /* Slightly enlarge on hover */
+        }
+
+        #errorMessage, #correctMessage {
+            color: red;
+            margin-top: 20px;
+            display: none;
+        }
+
+        #correctMessage {
+            color: green; /* Correct message color */
+        }
+
+        #repeatButton {
+            display: none;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.2s; /* Smooth transition */
+        }
+
+        #repeatButton:hover {
+            background-color: #5a9bd3; /* Change color on hover */
+            transform: scale(1.05); /* Slightly enlarge on hover */
+        }
+    </style>
+</head>
+<body>
+    <h1>Tebak Nada Chord</h1>
+    <div id="waveContainer">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div> <!-- Ensure there are 7 bars -->
+    </div>
+    <button id="startStopBtn" onclick="toggleGame()">Start</button>
+    <div id="chordButtons"></div>
+    <button id="nextButton" onclick="nextChord()">Next</button>
+    <button id="repeatButton" onclick="repeatAudio()">Ulangi Audio</button>
+    <div id="errorMessage"></div>
+    <div id="correctMessage"></div>
+    
+    <audio id="noteAudio"></audio>
+
+    <script>
+        const chords = [
+            { audio: "chord_a.mp3", correctAnswer: "A" },
+            { audio: "chord_b.mp3", correctAnswer: "B" },
+            { audio: "chord_c.mp3", correctAnswer: "C" },
+            { audio: "chord_d.mp3", correctAnswer: "D" },
+            { audio: "chord_e.mp3", correctAnswer: "E" },
+            { audio: "chord_f.mp3", correctAnswer: "F" },
+            { audio: "chord_g.mp3", correctAnswer: "G" },
+            { audio: "chord_am.mp3", correctAnswer: "Am" },
+            { audio: "chord_bm.mp3", correctAnswer: "Bm" },
+            { audio: "chord_cm.mp3", correctAnswer: "Cm" },
+            { audio: "chord_dm.mp3", correctAnswer: "Dm" },
+            { audio: "chord_em.mp3", correctAnswer: "Em" },
+            { audio: "chord_fm.mp3", correctAnswer: "Fm" },
+            { audio: "chord_gm.mp3", correctAnswer: "Gm" },
+        ];
+
+        let currentChordIndex = -1;
+        let playing = false;
+        const noteAudio = document.getElementById("noteAudio");
+        const chordButtonsDiv = document.getElementById("chordButtons");
+        const nextButton = document.getElementById("nextButton");
+        const repeatButton = document.getElementById("repeatButton");
+        const errorMessage = document.getElementById("errorMessage");
+        const correctMessage = document.getElementById("correctMessage");
+        const waveContainer = document.getElementById("waveContainer");
+        const bars = document.querySelectorAll(".bar");
+
+        function toggleGame() {
+            playing = !playing;
+            const button = document.getElementById("startStopBtn");
+            button.textContent = playing ? "Stop" : "Start";
+            chordButtonsDiv.style.display = playing ? "grid" : "none";
+            waveContainer.style.visibility = playing ? "visible" : "hidden"; // Show wave only when playing
+            errorMessage.style.display = "none"; // Reset error message when the game starts or stops
+            correctMessage.style.display = "none"; // Reset correct message when the game starts or stops
+            repeatButton.style.display = "none"; // Hide repeat button when game starts or stops
+            if (playing) {
+                nextChord();
+            } else {
+                resetGame();
+            }
+        }
+
+        function nextChord() {
+            currentChordIndex = Math.floor(Math.random() * chords.length);
+            const chord = chords[currentChordIndex];
+            noteAudio.src = chord.audio;
+            noteAudio.play();
+            createChordButtons();
+            errorMessage.style.display = "none"; // Reset error message
+            correctMessage.style.display = "none"; // Reset correct message
+            nextButton.style.display = "none"; // Hide next button
+            repeatButton.style.display = "none"; // Hide repeat button
+            waveContainer.style.visibility = "visible"; // Show wave when starting
+            animateBars(); // Start wave animation
+            enableChordButtons(); // Enable chord buttons
+        }
+
+        function animateBars() {
+            bars.forEach(bar => bar.style.height = "30px"); // Set all bars to a stable height
+            let count = 0;
+            const interval = setInterval(() => {
+                if (count >= 20) { // Increased count for smoother animation
+                    clearInterval(interval);
+                    return;
+                }
+                const randomHeight = Math.random() * 10 + 25; // Random height between 25px and 35px for smooth effect
+                bars.forEach(bar => {
+                    bar.style.height = randomHeight + "px"; // Set all bars to the same height
+                });
+                count++;
+            }, 100); // Interval to change height
+        }
+
+        function createChordButtons() {
+            chordButtonsDiv.innerHTML = ""; // Clear previous buttons
+            chords.forEach(chord => {
+                const button = document.createElement("button");
+                button.textContent = chord.correctAnswer;
+                button.className = "btn";
+                button.onclick = () => checkAnswer(chord.correctAnswer, button);
+                chordButtonsDiv.appendChild(button);
+            });
+            chordButtonsDiv.style.display = "grid"; // Show chord buttons
+        }
+
+        function checkAnswer(answer, button) {
+            const correctAnswer = chords[currentChordIndex].correctAnswer;
+            if (answer === correctAnswer) {
+                button.classList.add("correct");
+                correctMessage.textContent = `Benar! Chord yang benar adalah ${correctAnswer}.`;
+                correctMessage.style.display = "block"; // Show correct message
+                nextButton.style.display = "block"; // Show next button
+                repeatButton.style.display = "block"; // Show repeat button
+                disableAllButtons(); // Disable all buttons after correct answer
+            } else {
+                button.classList.add("wrong");
+                errorMessage.textContent = `Salah! Chord yang benar adalah ${correctAnswer}.`;
+                errorMessage.style.display = "block"; // Show error message
+                nextButton.style.display = "block"; // Show next button even if the answer is wrong
+                repeatButton.style.display = "block"; // Show repeat button even if the answer is wrong
+                disableAllButtons(); // Disable all buttons after wrong answer
+            }
+        }
+
+        function enableChordButtons() {
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(button => {
+                button.style.pointerEvents = "auto"; // Enable all buttons
+                button.classList.remove("correct", "wrong"); // Reset button styles
+            });
+        }
+
+        function disableAllButtons() {
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(button => {
+                button.style.pointerEvents = "none"; // Disable all buttons
+            });
+        }
+
+        function repeatAudio() {
+            noteAudio.currentTime = 0; // Reset audio to start
+            noteAudio.play(); // Play audio again
+        }
+
+        function resetGame() {
+            currentChordIndex = -1;
+            chordButtonsDiv.style.display = "none"; // Hide buttons on reset
+            nextButton.style.display = "none"; // Hide next button on reset
+            repeatButton.style.display = "none"; // Hide repeat button on reset
+            errorMessage.style.display = "none"; // Reset error message
+            correctMessage.style.display = "none"; // Reset correct message
+            noteAudio.pause(); // Stop audio
+            noteAudio.currentTime = 0; // Reset audio
+            waveContainer.style.visibility = "hidden"; // Hide wave on reset
+            bars.forEach(bar => bar.style.height = "30px"); // Reset bars height to original
+        }
+    </script>
+</body>
+</html>
